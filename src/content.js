@@ -3,23 +3,23 @@
 (function() {
   'use strict';
 
-  // 既に保存済みの tweetId を管理（重複保存防止）
   const savedTweetIds = new Set();
+  const observedElements = new WeakSet();
 
-  // IntersectionObserver の設定
-  const INTERSECTION_THRESHOLD = 0.3; // 30% 以上表示されたら「見た」と判定
-  const MIN_VISIBLE_DURATION = 300;   // 最低 300ms 画面内に表示
+  // 一瞬だけ表示されるツイートも拾いやすくするための閾値
+  const INTERSECTION_THRESHOLD = 0.05;
+  const MIN_VISIBLE_DURATION = 120;
+  const CHECK_INTERVAL_MS = 120;
+  const SAVE_DEBOUNCE_MS = 80;
+  const VIEWPORT_SCAN_INTERVAL_MS = 700;
 
-  // 表示状態を管理するマップ
   const visibleState = new Map();
+  const pendingTweetMap = new Map();
 
-  // 処理キュー
   let isProcessing = false;
-  const processQueue = [];
+  let intersectionObserver = null;
 
-  // ツイート本文のプレビューを取得
   function getTweetPreviewText(element) {
-    // ツイート本文を含む要素を探索
     const selectors = [
       'div[data-testid="tweetText"]',
       'div.tweet-text',
@@ -32,86 +32,90 @@
       const textElement = element.querySelector(selector);
       if (textElement) {
         const text = textElement.textContent || '';
-        const preview = text.replace(/\s+/g, ' ').substring(0, 30);
+        const preview = text.replace(/\s+/g, ' ').trim().substring(0, 80);
         if (preview.length > 0) {
           return preview;
         }
       }
     }
 
-    // 見つからない場合は article 内の最初のテキストを取得
     const allText = element.textContent || '';
-    return allText.replace(/\s+/g, ' ').substring(0, 30);
+    return allText.replace(/\s+/g, ' ').trim().substring(0, 80);
   }
 
-  // ツイート ID の正規化と保存
-  async function saveTweetFromElement(element) {
+  function getNormalizedTweetFromElement(element) {
     if (!window.TweetSaverStorage || !window.TweetSaverStorage.normalizeTwitterUrl) {
-      return false;
+      return null;
     }
 
     const statusLinks = element.querySelectorAll('a[href*="/status/"]');
 
     for (const link of statusLinks) {
       const url = link.getAttribute('href');
-
       if (!url) continue;
 
-      // 不要な派生 URL を除外
       if (url.match(/\/(photo|analytics|retweets|likes|conversation)/)) {
         continue;
       }
 
-      // クエリパラメータ付き URL を除外
-      if (url.includes('?')) {
-        continue;
-      }
-
-      // 正規化された URL を取得
       const normalized = window.TweetSaverStorage.normalizeTwitterUrl(url);
-
       if (normalized && normalized.tweetId) {
-        if (savedTweetIds.has(normalized.tweetId)) {
-          continue;
-        }
-
-        // ツイート本文を取得（プレビュー用）
-        const previewText = getTweetPreviewText(element);
-
-        // 保存処理をキューに追加
-        processQueue.push({
-          tweetId: normalized.tweetId,
-          url: normalized.url,
-          username: normalized.username,
-          preview: previewText
-        });
-
-        // 処理が実行されていないなら実行
-        if (!isProcessing) {
-          processQueueDebounce();
-        }
-
-        return true;
+        return normalized;
       }
     }
 
-    return false;
+    return null;
   }
 
-  // キュー内のツイートを保存（重複チェックあり）
+  function enqueueTweetSaveFromElement(element, reason = 'visible') {
+    const normalized = getNormalizedTweetFromElement(element);
+    if (!normalized) {
+      return false;
+    }
+
+    if (savedTweetIds.has(normalized.tweetId) || pendingTweetMap.has(normalized.tweetId)) {
+      return false;
+    }
+
+    pendingTweetMap.set(normalized.tweetId, {
+      tweetId: normalized.tweetId,
+      url: normalized.url,
+      username: normalized.username,
+      preview: getTweetPreviewText(element),
+      reason,
+      queuedAt: Date.now()
+    });
+
+    if (!isProcessing) {
+      processQueueDebounce();
+    }
+
+    return true;
+  }
+
   async function processQueueDebounce() {
-    if (processQueue.length === 0) return;
+    if (pendingTweetMap.size === 0 || isProcessing) return;
 
     isProcessing = true;
 
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, SAVE_DEBOUNCE_MS));
 
-    const itemsToSave = [...processQueue];
-    processQueue.length = 0;
+    const itemsToSave = Array.from(pendingTweetMap.values());
+    pendingTweetMap.clear();
 
     try {
       for (const item of itemsToSave) {
-        const saved = await window.TweetSaverStorage.saveTweet(item.url, item.tweetId, item.username, item.preview);
+        if (savedTweetIds.has(item.tweetId)) {
+          continue;
+        }
+
+        const saved = await window.TweetSaverStorage.saveTweet(
+          item.url,
+          item.tweetId,
+          item.username,
+          item.preview
+        );
+
         if (saved) {
           savedTweetIds.add(item.tweetId);
         }
@@ -121,75 +125,160 @@
     }
 
     isProcessing = false;
+
+    if (pendingTweetMap.size > 0) {
+      processQueueDebounce();
+    }
   }
 
-  // IntersectionObserver のコールバック
+  function isInViewport(element) {
+    if (!element || !element.isConnected) {
+      return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+    return (
+      rect.bottom >= 0 &&
+      rect.right >= 0 &&
+      rect.top <= viewportHeight &&
+      rect.left <= viewportWidth
+    );
+  }
+
+  function captureElementIfRelevant(element, reason = 'visible') {
+    if (!isTweetElement(element)) {
+      return false;
+    }
+
+    return enqueueTweetSaveFromElement(element, reason);
+  }
+
+  function flushElementBeforeRemoval(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) {
+      return;
+    }
+
+    if (isTweetElement(element)) {
+      captureElementIfRelevant(element, 'removed');
+      visibleState.delete(element);
+    }
+
+    const tweetNodes = element.querySelectorAll ? element.querySelectorAll('article, div[role="article"]') : [];
+    for (const tweetNode of tweetNodes) {
+      captureElementIfRelevant(tweetNode, 'removed-descendant');
+      visibleState.delete(tweetNode);
+    }
+  }
+
   const intersectionCallback = (entries) => {
     for (const entry of entries) {
       const element = entry.target;
+      const existingState = visibleState.get(element);
 
       if (entry.isIntersecting) {
-        if (!visibleState.has(element)) {
+        if (!existingState) {
           visibleState.set(element, {
             entranceTime: Date.now(),
             processed: false
           });
         }
-      } else {
+      } else if (existingState) {
+        if (!existingState.processed) {
+          captureElementIfRelevant(element, 'exit-before-threshold');
+        }
         visibleState.delete(element);
       }
     }
   };
 
-  // 処理対象かどうかをチェックして保存
   function checkAndSaveVisibleElements() {
     const now = Date.now();
 
     for (const [element, state] of visibleState.entries()) {
       if (state.processed) continue;
 
+      if (!element.isConnected) {
+        captureElementIfRelevant(element, 'disconnected');
+        visibleState.delete(element);
+        continue;
+      }
+
       if (now - state.entranceTime >= MIN_VISIBLE_DURATION) {
         state.processed = true;
-        saveTweetFromElement(element);
+        captureElementIfRelevant(element, 'visible-threshold');
       }
     }
   }
 
-  // 定期的なチェック
-  const checkInterval = setInterval(checkAndSaveVisibleElements, 200);
-
-  // 1つの要素を監視
   function observeElement(element) {
-    if (typeof IntersectionObserver === 'undefined') {
+    if (typeof IntersectionObserver === 'undefined' || !element) {
       return;
     }
 
-    if (element.dataset.tweetSaverObserved === 'true') {
+    if (observedElements.has(element)) {
       return;
     }
+
+    observedElements.add(element);
     element.dataset.tweetSaverObserved = 'true';
+    intersectionObserver.observe(element);
 
-    const observer = new IntersectionObserver(intersectionCallback, {
-      root: null,
-      rootMargin: '0px',
-      threshold: INTERSECTION_THRESHOLD
-    });
+    if (isInViewport(element)) {
+      const currentState = visibleState.get(element);
+      if (!currentState) {
+        visibleState.set(element, {
+          entranceTime: Date.now(),
+          processed: false
+        });
+      }
 
-    observer.observe(element);
+      captureElementIfRelevant(element, 'observed-in-viewport');
+    }
   }
 
-  // 要素がツイートであるかを判定
   function isTweetElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) {
+      return false;
+    }
+
     if (element.tagName === 'ARTICLE') {
       return true;
     }
+
     if (element.tagName === 'DIV' && element.getAttribute('role') === 'article') {
       return true;
     }
+
     return false;
   }
 
-  // 初期化時に既存の要素を監視
+  function observeTweetElementsInSubtree(root) {
+    if (!root || root.nodeType !== Node.ELEMENT_NODE) {
+      return;
+    }
+
+    if (isTweetElement(root)) {
+      observeElement(root);
+    }
+
+    const tweetNodes = root.querySelectorAll('article, div[role="article"]');
+    for (const tweetNode of tweetNodes) {
+      observeElement(tweetNode);
+    }
+  }
+
+  function scanVisibleTweets() {
+    const tweetElements = document.querySelectorAll('article, div[role="article"]');
+    for (const element of tweetElements) {
+      if (isInViewport(element)) {
+        captureElementIfRelevant(element, 'viewport-scan');
+      }
+    }
+  }
+
   async function init() {
     if (window.TweetSaverStorage && window.TweetSaverStorage.loadStorageData) {
       try {
@@ -200,30 +289,26 @@
       }
     }
 
-    let tweetElements = document.querySelectorAll('article, div[role="article"]');
-
-    const observedElements = new Set();
-    for (const element of tweetElements) {
-      if (observedElements.has(element)) continue;
-      observedElements.add(element);
-      observeElement(element);
+    if (typeof IntersectionObserver !== 'undefined') {
+      intersectionObserver = new IntersectionObserver(intersectionCallback, {
+        root: null,
+        rootMargin: '96px 0px',
+        threshold: INTERSECTION_THRESHOLD
+      });
     }
 
-    // MutationObserver を開始
+    observeTweetElementsInSubtree(document.body);
+    scanVisibleTweets();
+
     const bodyObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
+        for (const node of mutation.removedNodes) {
+          flushElementBeforeRemoval(node);
+        }
+
         for (const node of mutation.addedNodes) {
           if (node.nodeType === Node.ELEMENT_NODE) {
-            if (isTweetElement(node)) {
-              observeElement(node);
-            }
-
-            const tweetNodes = node.querySelectorAll('article, div[role="article"]');
-            for (const tweetNode of tweetNodes) {
-              if (!tweetNode.dataset.tweetSaverObserved) {
-                observeElement(tweetNode);
-              }
-            }
+            observeTweetElementsInSubtree(node);
           }
         }
       }
@@ -235,15 +320,17 @@
     });
   }
 
-  // 初期化（DOMContentLoaded 後に実行）
+  const checkInterval = setInterval(checkAndSaveVisibleElements, CHECK_INTERVAL_MS);
+  const viewportScanInterval = setInterval(scanVisibleTweets, VIEWPORT_SCAN_INTERVAL_MS);
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // クリーンアップ
   window.addEventListener('beforeunload', () => {
     clearInterval(checkInterval);
+    clearInterval(viewportScanInterval);
   });
 })();
