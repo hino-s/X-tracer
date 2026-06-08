@@ -7,11 +7,11 @@
   const observedElements = new WeakSet();
 
   // 一瞬だけ表示されるツイートも拾いやすくするための閾値
-  const INTERSECTION_THRESHOLD = 0.05;
-  const MIN_VISIBLE_DURATION = 120;
-  const CHECK_INTERVAL_MS = 120;
-  const SAVE_DEBOUNCE_MS = 80;
-  const VIEWPORT_SCAN_INTERVAL_MS = 700;
+  const INTERSECTION_THRESHOLD = 0.01;
+  const MIN_VISIBLE_DURATION = 60;
+  const CHECK_INTERVAL_MS = 80;
+  const SAVE_DEBOUNCE_MS = 50;
+  const VIEWPORT_SCAN_INTERVAL_MS = 400;
 
   const visibleState = new Map();
   const pendingTweetMap = new Map();
@@ -292,7 +292,7 @@
     if (typeof IntersectionObserver !== 'undefined') {
       intersectionObserver = new IntersectionObserver(intersectionCallback, {
         root: null,
-        rootMargin: '96px 0px',
+        rootMargin: '160px 0px',
         threshold: INTERSECTION_THRESHOLD
       });
     }
