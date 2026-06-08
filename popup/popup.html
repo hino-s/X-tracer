@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>保存したツイート</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">保存したツイート</h1>
+      <span class="count" id="tweetCount">0件</span>
+    </header>
+
+    <div class="settings-section">
+      <label class="settings-label" for="maxItems">
+        最大保存件数:
+        <input type="number" id="maxItems" min="20" max="2000" class="settings-input">
+      </label>
+      <button id="saveSettings" class="save-btn">保存</button>
+      <span id="saveMessage" class="save-message"></span>
+    </div>
+
+    <div class="search-section">
+      <input type="text" id="searchInput" class="search-input" placeholder="検索（URL、ユーザー名、本文）...">
+      <button id="clearSearch" class="clear-search-btn" style="display: none;">×</button>
+    </div>
+
+    <div id="tweetList" class="tweet-list">
+      <div class="empty-message">まだ保存されたツイートはありません</div>
+    </div>
+
+    <div class="actions">
+      <button id="deleteAll" class="delete-all-btn">すべて削除</button>
+    </div>
+
+    <div class="support-section">
+      <a href="https://www.paypal.com/paypalme/hinosi" target="_blank" rel="noopener noreferrer">
+        <button id="supportBtn" class="support-btn">
+          開発者を支援
+        </button>
+      </a>
+    </div>
+  </div>
+
+  <script src="../src/storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

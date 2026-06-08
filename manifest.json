@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Twitter/X Tweet Saver",
+  "version": "1.0.0",
+  "description": "Twitter/X のタイムラインで表示されたツイートの URL を自動保存します",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://twitter.com/*",
+    "https://x.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "保存したツイート一覧"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://twitter.com/*",
+        "https://x.com/*"
+      ],
+      "js": [
+        "src/storage.js",
+        "src/content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
