@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Twitter/X Tweet Saver",
+  "name": "X-tracer",
   "version": "1.0.0",
-  "description": "Twitter/X のタイムラインで表示されたツイートの URL を自動保存します",
+  "description": "X/Twitter のタイムラインで表示されたポストの URL を自動保存します",
   "permissions": [
     "storage"
   ],
@@ -12,7 +12,11 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "保存したツイート一覧"
+    "default_title": "X-tracer"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {

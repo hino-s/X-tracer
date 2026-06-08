@@ -1,276 +1,378 @@
-/* popup.css - ポップアップ画面用スタイル */
-
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+:root {
+  color-scheme: light;
+  --bg: #eef3f8;
+  --surface: #ffffff;
+  --surface-soft: #f7f9fc;
+  --border: #d8e1eb;
+  --border-strong: #bfcddd;
+  --text: #17212b;
+  --muted: #5c6b7a;
+  --accent: #1d9bf0;
+  --accent-strong: #1477c9;
+  --danger: #f4212e;
+  --danger-soft: #fff1f2;
+  --shadow: 0 12px 30px rgba(25, 45, 72, 0.12);
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background: linear-gradient(180deg, #f4f8fb 0%, #edf2f8 100%);
+  width: 420px;
   font-size: 14px;
   line-height: 1.5;
-  color: #1a1a1a;
-  background-color: #ffffff;
-  width: 360px;
+}
+
+.app-shell {
+  padding: 14px;
 }
 
 .container {
-  padding: 16px;
-  max-height: 600px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  max-height: 680px;
 }
 
-/* Header */
-.header {
+.hero-card,
+.toolbar-card,
+.list-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.hero-card {
+  padding: 16px;
+  background: linear-gradient(135deg, #0f1722 0%, #153757 100%);
+  color: #fff;
+}
+
+.hero-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+  margin-bottom: 4px;
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-size: 21px;
+  font-weight: 700;
 }
 
 .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 6px 10px;
+  border-radius: 999px;
   font-size: 12px;
-  color: #666;
-  background-color: #f5f5f5;
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-weight: 700;
+  color: #dff2ff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-/* Settings Section */
+.hero-description {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.toolbar-card,
+.list-card {
+  padding: 14px;
+}
+
+.search-section {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.search-input,
+.settings-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.search-input {
+  padding: 11px 38px 11px 14px;
+  font-size: 13px;
+}
+
+.search-input:focus,
+.settings-input:focus {
+  outline: none;
+  border-color: rgba(29, 155, 240, 0.55);
+  box-shadow: 0 0 0 4px rgba(29, 155, 240, 0.14);
+  background: #fff;
+}
+
+.clear-search-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: #dde8f2;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: none;
+}
+
+.clear-search-btn:hover {
+  background: #cfdae5;
+}
+
 .settings-section {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
 }
 
 .settings-label {
-  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.settings-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #333;
-  flex: 1;
 }
 
 .settings-input {
-  width: 70px;
-  padding: 6px 8px;
+  min-width: 0;
+  padding: 10px 12px;
   font-size: 13px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
 }
 
-.save-btn {
-  padding: 6px 12px;
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+  border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
-  color: #1a1a1a;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.save-btn:hover {
-  background-color: #e0e0e0;
+.compact-btn {
+  padding: 10px 12px;
+  white-space: nowrap;
 }
 
-.save-btn:active {
-  background-color: #d0d0d0;
+.primary-btn {
+  color: #fff;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  box-shadow: 0 8px 18px rgba(29, 155, 240, 0.26);
+}
+
+.primary-btn:hover,
+.secondary-btn:hover,
+.danger-btn:hover {
+  transform: translateY(-1px);
+}
+
+.secondary-btn {
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.danger-btn {
+  padding: 10px 14px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid #ffd2d6;
 }
 
 .save-message {
-  font-size: 11px;
-  color: #28a745;
-  min-width: 60px;
+  min-height: 18px;
+  font-size: 12px;
+  color: #18794e;
 }
 
-/* Tweet List */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.section-caption {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .tweet-list {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 340px;
   overflow-y: auto;
-  margin-bottom: 12px;
   padding-right: 4px;
 }
 
 .tweet-item {
+  padding: 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+  border: 1px solid var(--border);
+}
+
+.tweet-item-header {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
   margin-bottom: 8px;
 }
 
-.tweet-url {
-  font-size: 12px;
-  color: #1a1a1a;
-  word-break: break-all;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.tweet-preview {
+.tweet-user {
   font-size: 13px;
-  color: #555;
-  line-height: 1.4;
-  margin-top: 4px;
-  padding: 8px 10px;
-  background-color: #fff;
-  border-radius: 4px;
-  border-left: 3px solid #1a73e8;
-}
-
-.tweet-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  color: #666;
+  font-weight: 700;
+  color: #0f5fa8;
 }
 
 .tweet-time {
-  color: #999;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tweet-preview {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.tweet-url {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.tweet-url:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
 }
 
 .tweet-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+}
+
+.open-btn,
+.delete-btn {
+  flex: 1;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .open-btn {
-  flex: 1;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #1a1a1a;
-  background-color: #e8f4fd;
-  border: 1px solid #b3d9ff;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  color: #fff;
+  border: 1px solid transparent;
+  background: #1d9bf0;
 }
 
 .open-btn:hover {
-  background-color: #d0eaff;
-}
-
-.open-btn:active {
-  background-color: #b3d9ff;
+  background: #1482cf;
 }
 
 .delete-btn {
-  padding: 6px 10px;
-  font-size: 12px;
-  color: #dc3545;
-  background-color: #fff5f5;
-  border: 1px solid #ffcccc;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  color: var(--danger);
+  border: 1px solid #ffd2d6;
+  background: #fff;
 }
 
 .delete-btn:hover {
-  background-color: #ffe0e0;
+  background: #fff4f5;
 }
 
-.delete-btn:active {
-  background-color: #ffcccc;
-}
-
-/* Empty message */
 .empty-message {
+  padding: 48px 18px;
   text-align: center;
-  padding: 40px 20px;
-  color: #999;
-  font-size: 13px;
-}
-
-/* Actions */
-.actions {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.delete-all-btn {
-  padding: 8px 24px;
-  font-size: 12px;
-  color: #dc3545;
-  background-color: #fff;
-  border: 1px solid #dc3545;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.delete-all-btn:hover {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-.delete-all-btn:active {
-  transform: translateY(1px);
-}
-
-/* Support Section */
-.support-section {
-  text-align: center;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.support-btn {
-  padding: 6px 16px;
-  font-size: 11px;
-  color: #666;
-  background-color: #fafafa;
-  border: 1px solid #ddd;
+  border: 1px dashed var(--border-strong);
   border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
+  color: var(--muted);
+  background: var(--surface-soft);
 }
 
-.support-btn:hover {
-  color: #333;
-  background-color: #f0f0f0;
-  border-color: #ccc;
+.footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
-.support-btn:active {
-  transform: translateY(1px);
-  background-color: #e8e8e8;
+.support-link {
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
 }
 
-/* Scrollbar styling */
+.support-link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .tweet-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.tweet-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 .tweet-list::-webkit-scrollbar-thumb {
-  background-color: #ccc;
-  border-radius: 3px;
+  background: #c7d4e0;
+  border-radius: 999px;
 }

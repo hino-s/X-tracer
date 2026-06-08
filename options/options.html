@@ -3,48 +3,86 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>設定 - Twitter/X Tweet Saver</title>
+  <title>X-tracer の設定</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1 class="title">設定</h1>
-    </header>
+  <div class="page-shell">
+    <div class="container">
+      <header class="page-hero">
+        <div>
+          <p class="eyebrow">X-tracer</p>
+          <h1 class="title">設定</h1>
+          <p class="hero-description">保存件数やデータ管理をここから調整できます。</p>
+        </div>
+        <div class="hero-badge">
+          <span class="hero-badge-label">version</span>
+          <span id="version" class="hero-badge-value"></span>
+        </div>
+      </header>
 
-    <div class="section">
-      <h2 class="section-title">最大保存件数</h2>
-      <p class="description">タイムラインで保存するツイートの最大件数を設定します。</p>
-      <div class="setting-row">
-        <label class="setting-label" for="maxItems">
-          最大件数:
-        </label>
-        <input type="number" id="maxItems" min="20" max="2000" class="setting-input">
-        <span class="range-hint">(20 - 2000)</span>
-      </div>
-      <button id="saveBtn" class="save-btn">保存する</button>
-      <span id="saveMessage" class="save-message"></span>
-    </div>
+      <div id="statusMessage" class="status-message" hidden></div>
 
-    <div class="section">
-      <h2 class="section-title">データ管理</h2>
-      <p class="description">保存されたツイートデータを管理します。</p>
-      <button id="deleteAllBtn" class="delete-btn">すべて削除</button>
-    </div>
+      <section class="section-card">
+        <div class="section-heading">
+          <h2 class="section-title">保存設定</h2>
+          <p class="description">タイムラインで記録しておくポストの最大件数を設定します。</p>
+        </div>
 
-    <div class="section">
-      <h2 class="section-title">拡張機能について</h2>
-      <div class="info-box">
-        <p><strong>バージョン:</strong> <span id="version"></span></p>
-        <p><strong>保存場所:</strong> ローカルストレージ (chrome.storage.local)</p>
-        <p><strong>データの送信:</strong> 一切行われません</p>
-      </div>
-    </div>
+        <div class="setting-grid">
+          <label class="setting-field" for="maxItems">
+            <span class="setting-label">最大保存件数</span>
+            <input type="number" id="maxItems" min="20" max="2000" class="setting-input">
+          </label>
+          <div class="setting-hint">20〜2000件の範囲で指定できます。上限を超えた古いデータは自動で整理されます。</div>
+        </div>
 
-    <div class="support-section">
-      <a href="https://www.paypal.com/paypalme/hinosi" target="_blank" rel="noopener noreferrer">
-        <button class="support-btn">開発者を支援</button>
-      </a>
+        <div class="button-row">
+          <button id="saveBtn" class="primary-btn" type="button">保存する</button>
+          <span id="saveMessage" class="save-message" aria-live="polite"></span>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <h2 class="section-title">データ管理</h2>
+          <p class="description">保存済みポストの一覧をリセットしたいときに使用します。</p>
+        </div>
+
+        <div class="danger-panel">
+          <div>
+            <p class="danger-title">保存データをすべて削除</p>
+            <p class="danger-description">ローカルストレージ内の記録をすべて削除します。この操作は元に戻せません。</p>
+          </div>
+          <button id="deleteAllBtn" class="danger-btn" type="button">すべて削除</button>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-heading">
+          <h2 class="section-title">この拡張機能について</h2>
+          <p class="description">X-tracer は外部送信を行わず、保存情報はブラウザ内だけに保持します。</p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">保存場所</span>
+            <span class="info-value">chrome.storage.local</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">データ送信</span>
+            <span class="info-value">一切なし</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">対象</span>
+            <span class="info-value">x.com / twitter.com</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <a class="support-link" href="https://www.paypal.com/paypalme/hinosi" target="_blank" rel="noopener noreferrer">開発者を支援</a>
+      </footer>
     </div>
   </div>
 

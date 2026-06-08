@@ -3,44 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>保存したツイート</title>
+  <title>X-tracer</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1 class="title">保存したツイート</h1>
-      <span class="count" id="tweetCount">0件</span>
-    </header>
+  <div class="app-shell">
+    <div class="container">
+      <header class="hero-card">
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">X-tracer</p>
+            <h1 class="title">保存したポスト</h1>
+          </div>
+          <span class="count" id="tweetCount">0件</span>
+        </div>
+        <p class="hero-description">タイムラインで見かけたポストをすばやく確認・検索できます。</p>
+      </header>
 
-    <div class="settings-section">
-      <label class="settings-label" for="maxItems">
-        最大保存件数:
-        <input type="number" id="maxItems" min="20" max="2000" class="settings-input">
-      </label>
-      <button id="saveSettings" class="save-btn">保存</button>
-      <span id="saveMessage" class="save-message"></span>
-    </div>
+      <section class="toolbar-card">
+        <div class="search-section">
+          <label class="sr-only" for="searchInput">保存済みポストを検索</label>
+          <input type="text" id="searchInput" class="search-input" placeholder="URL・ユーザー名・本文で検索">
+          <button id="clearSearch" class="clear-search-btn" type="button" aria-label="検索をクリア">×</button>
+        </div>
 
-    <div class="search-section">
-      <input type="text" id="searchInput" class="search-input" placeholder="検索（URL、ユーザー名、本文）...">
-      <button id="clearSearch" class="clear-search-btn" style="display: none;">×</button>
-    </div>
+        <div class="settings-section">
+          <label class="settings-label" for="maxItems">最大保存件数</label>
+          <div class="settings-controls">
+            <input type="number" id="maxItems" min="20" max="2000" class="settings-input">
+            <button id="saveSettings" class="primary-btn compact-btn" type="button">保存</button>
+            <button id="openOptions" class="secondary-btn compact-btn" type="button">詳細設定</button>
+          </div>
+          <span id="saveMessage" class="save-message" aria-live="polite"></span>
+        </div>
+      </section>
 
-    <div id="tweetList" class="tweet-list">
-      <div class="empty-message">まだ保存されたツイートはありません</div>
-    </div>
+      <section class="list-card">
+        <div class="section-header">
+          <h2 class="section-title">一覧</h2>
+          <span id="listStatus" class="section-caption">新しい順</span>
+        </div>
 
-    <div class="actions">
-      <button id="deleteAll" class="delete-all-btn">すべて削除</button>
-    </div>
+        <div id="tweetList" class="tweet-list">
+          <div class="empty-message">まだ保存されたポストはありません</div>
+        </div>
+      </section>
 
-    <div class="support-section">
-      <a href="https://www.paypal.com/paypalme/hinosi" target="_blank" rel="noopener noreferrer">
-        <button id="supportBtn" class="support-btn">
-          開発者を支援
-        </button>
-      </a>
+      <footer class="footer-actions">
+        <button id="deleteAll" class="danger-btn" type="button">すべて削除</button>
+        <a class="support-link" href="https://www.paypal.com/paypalme/hinosi" target="_blank" rel="noopener noreferrer">開発者を支援</a>
+      </footer>
     </div>
   </div>
 

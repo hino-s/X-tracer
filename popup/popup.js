@@ -1,288 +1,223 @@
-// popup.js - ポップアップ画面用スクリプト
-
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async () => {
   const tweetListEl = document.getElementById('tweetList');
   const deleteAllBtn = document.getElementById('deleteAll');
   const maxItemsInput = document.getElementById('maxItems');
   const saveSettingsBtn = document.getElementById('saveSettings');
   const saveMessageEl = document.getElementById('saveMessage');
-  const supportBtn = document.getElementById('supportBtn');
   const tweetCountEl = document.getElementById('tweetCount');
   const searchInput = document.getElementById('searchInput');
   const clearSearchBtn = document.getElementById('clearSearch');
+  const listStatusEl = document.getElementById('listStatus');
+  const openOptionsBtn = document.getElementById('openOptions');
 
-  // 現在表示中のツイートリスト
-  let currentTweets = [];
-  let isSearchMode = false;
+  let allTweets = [];
+  let filteredTweets = [];
+  let currentQuery = '';
 
-  // ツイート一覧を描画
-  async function renderTweets() {
-    try {
-      const tweets = await window.TweetSaverStorage.getAllTweets();
-      const settings = await window.TweetSaverStorage.getSettings();
-
-      // 最大件数の入力値を更新
-      maxItemsInput.value = settings.maxItems;
-
-      // 検索モードか通常モードかで表示データを切り替え
-      const displayTweets = isSearchMode ? tweets : tweets;
-      currentTweets = displayTweets;
-
-      // 件数表示
-      tweetCountEl.textContent = currentTweets.length + '件';
-
-      if (currentTweets.length === 0) {
-        tweetListEl.innerHTML = '<div class="empty-message">まだ保存されたツイートはありません</div>';
-        return;
-      }
-
-      // 新しい順にソート（既に新しい順だが念のため）
-      const sortedTweets = [...currentTweets].sort((a, b) => b.seenAt - a.seenAt);
-
-      // username が保存されていないツイートのために補完
-      for (const tweet of sortedTweets) {
-        if (!tweet.username) {
-          try {
-            const urlMatch = tweet.url.match(/https?:\/\/([^\/]+)\/status\/\d+/);
-            if (urlMatch) {
-              tweet.username = urlMatch[1];
-            }
-          } catch (e) {
-            // URL 解析エラーは無視
-          }
-        }
-      }
-
-      // HTML を生成
-      let html = '';
-      for (const tweet of sortedTweets) {
-        const time = new Date(tweet.seenAt);
-        const timeString = time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
-        const preview = tweet.preview ? escapeHtml(tweet.preview) : '';
-
-        html += `
-          <div class="tweet-item" data-tweet-id="${escapeHtml(tweet.tweetId)}">
-            <a href="${escapeHtml(tweet.url)}" target="_blank" rel="noopener noreferrer" class="tweet-url">
-              ${escapeHtml(tweet.url)}
-            </a>
-            ${preview ? `<div class="tweet-preview">${preview}...</div>` : ''}
-            <div class="tweet-meta">
-              <span class="tweet-time">${timeString}</span>
-              <div class="tweet-actions">
-                <button class="open-btn" data-action="open">開く</button>
-                <button class="delete-btn" data-action="delete">削除</button>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      tweetListEl.innerHTML = html;
-
-      // イベントリスナーを追加
-      tweetListEl.addEventListener('click', handleTweetItemClick);
-
-    } catch (error) {
-      tweetListEl.innerHTML = '<div class="empty-message" style="color: #dc3545;">読み込み中にエラーが発生しました</div>';
-    }
-  }
-
-  // 検索機能
-  function searchTweets(query) {
-    if (!query || query.trim() === '') {
-      isSearchMode = false;
-      renderTweets();
-      clearSearchBtn.style.display = 'none';
-      return;
-    }
-
-    isSearchMode = true;
-    const searchTerm = query.toLowerCase().trim();
-
-    // URL、ユーザー名、プレビューのいずれかに一致するものをフィルタリング
-    currentTweets = window.TweetSaverStorage.getAllTweets().then(tweets => {
-      return tweets.filter(tweet => {
-        const urlMatch = tweet.url.toLowerCase().includes(searchTerm);
-        const usernameMatch = (tweet.username || '').toLowerCase().includes(searchTerm);
-        const previewMatch = (tweet.preview || '').toLowerCase().includes(searchTerm);
-        return urlMatch || usernameMatch || previewMatch;
-      });
-    });
-
-    // フィルタリング結果を描画
-    currentTweets.then(filtered => {
-      if (filtered.length === 0) {
-        tweetListEl.innerHTML = '<div class="empty-message">検索結果はありません</div>';
-        return;
-      }
-
-      const sortedTweets = [...filtered].sort((a, b) => b.seenAt - a.seenAt);
-
-      let html = '';
-      for (const tweet of sortedTweets) {
-        const time = new Date(tweet.seenAt);
-        const timeString = time.toLocaleDateString() + ' ' + time.toLocaleTimeString();
-        const preview = tweet.preview ? escapeHtml(tweet.preview) : '';
-
-        html += `
-          <div class="tweet-item" data-tweet-id="${escapeHtml(tweet.tweetId)}">
-            <a href="${escapeHtml(tweet.url)}" target="_blank" rel="noopener noreferrer" class="tweet-url">
-              ${escapeHtml(tweet.url)}
-            </a>
-            ${preview ? `<div class="tweet-preview">${preview}...</div>` : ''}
-            <div class="tweet-meta">
-              <span class="tweet-time">${timeString}</span>
-              <div class="tweet-actions">
-                <button class="open-btn" data-action="open">開く</button>
-                <button class="delete-btn" data-action="delete">削除</button>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      tweetListEl.innerHTML = html;
-      tweetListEl.addEventListener('click', handleTweetItemClick);
-      clearSearchBtn.style.display = 'block';
-    });
-  }
-
-  // 検索をクリア
-  function clearSearch() {
-    searchInput.value = '';
-    isSearchMode = false;
-    clearSearchBtn.style.display = 'none';
-    renderTweets();
-  }
-
-  // イベントハンドラ
-  function handleTweetItemClick(e) {
-    const button = e.target.closest('button');
-
-    if (!button) return;
-
-    const action = button.dataset.action;
-    const tweetItem = button.closest('.tweet-item');
-    const tweetId = tweetItem.dataset.tweetId;
-
-    if (action === 'delete') {
-      deleteTweet(tweetId, tweetItem);
-    } else if (action === 'open') {
-      openTweet(tweetId);
-    }
-  }
-
-  // ツイートを削除
-  async function deleteTweet(tweetId, element) {
-    try {
-      const result = await window.TweetSaverStorage.deleteTweet(tweetId);
-      if (result) {
-        // アニメーションで削除
-        element.style.opacity = '0';
-        element.style.transform = 'translateX(-20px)';
-        setTimeout(() => {
-          element.remove();
-          // 空になったら空メッセージを表示
-          if (document.querySelectorAll('.tweet-item').length === 0) {
-            renderTweets();
-          }
-        }, 200);
-      }
-    } catch (error) {
-      alert('削除中にエラーが発生しました');
-    }
-  }
-
-  // ツイートを開く
-  async function openTweet(tweetId) {
-    try {
-      const tweet = await window.TweetSaverStorage.getTweetByTweetId(tweetId);
-      if (tweet && tweet.url) {
-        chrome.tabs.create({ url: tweet.url });
-      }
-    } catch (error) {
-      alert('ツイートを開けませんでした');
-    }
-  }
-
-  // 設定を保存
-  async function saveSettings() {
-    const maxItems = parseInt(maxItemsInput.value, 10);
-
-    // 範囲チェック
-    if (isNaN(maxItems) || maxItems < 20 || maxItems > 2000) {
-      alert('最大保存件数は 20 から 2000 の間で指定してください');
-      maxItemsInput.value = await (await window.TweetSaverStorage.getSettings()).maxItems;
-      return;
-    }
-
-    try {
-      await window.TweetSaverStorage.updateSettings({ maxItems: maxItems });
-
-      // 保存メッセージを表示
-      saveMessageEl.textContent = '保存しました';
-      setTimeout(() => {
-        saveMessageEl.textContent = '';
-      }, 2000);
-
-      // リストを再描画
-      renderTweets();
-    } catch (error) {
-      alert('保存中にエラーが発生しました');
-    }
-  }
-
-  // すべて削除
-  async function deleteAllTweets() {
-    if (!confirm('すべての保存済みツイートを削除します。よろしいですか？')) {
-      return;
-    }
-
-    try {
-      const result = await window.TweetSaverStorage.deleteAllTweets();
-      if (result) {
-        renderTweets();
-      }
-    } catch (error) {
-      alert('全削除中にエラーが発生しました');
-    }
-  }
-
-  // HTML エスケープ
   function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = text == null ? '' : String(text);
     return div.innerHTML;
   }
 
-  // イベントリスナーの設定
-  saveSettingsBtn.addEventListener('click', saveSettings);
-  deleteAllBtn.addEventListener('click', deleteAllTweets);
-  searchInput.addEventListener('input', (e) => {
-    searchTweets(e.target.value);
-  });
-  clearSearchBtn.addEventListener('click', clearSearch);
+  function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('ja-JP') + ' ' + date.toLocaleTimeString('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
 
-  // ストレージ変更を監視
-  window.TweetSaverStorage.addStorageChangeListener(renderTweets);
+  function getUsernameLabel(tweet) {
+    if (tweet.username) {
+      return '@' + tweet.username;
+    }
 
-  // 初回描画
-  renderTweets();
+    try {
+      const match = tweet.url.match(/https?:\/\/(?:twitter|x)\.com\/([^\/]+)\/status\/\d+/i);
+      if (match) {
+        return '@' + match[1];
+      }
+    } catch (error) {
+      // ignore
+    }
 
-  // 補足: ポップアップが開かれたときに自動更新
-  const refreshInterval = setInterval(async () => {
-    // ポップアップが閉じられている場合は停止
-    if (!document.hasFocus() && document.hidden) {
-      clearInterval(refreshInterval);
+    return '@unknown';
+  }
+
+  function renderTweetList(tweets) {
+    tweetCountEl.textContent = `${tweets.length}件`;
+
+    if (currentQuery) {
+      listStatusEl.textContent = `「${currentQuery}」の検索結果`;
+    } else {
+      listStatusEl.textContent = '新しい順';
+    }
+
+    if (tweets.length === 0) {
+      tweetListEl.innerHTML = `<div class="empty-message">${currentQuery ? '検索結果はありません' : 'まだ保存されたポストはありません'}</div>`;
       return;
     }
-    renderTweets();
-  }, 5000);
 
-  // オプション画面からの更新メッセージを受信
-  chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'refreshPopup') {
-      renderTweets();
+    const html = tweets.map((tweet) => {
+      const preview = tweet.preview ? escapeHtml(tweet.preview) : '本文プレビューはまだ取得されていません';
+      return `
+        <article class="tweet-item" data-tweet-id="${escapeHtml(tweet.tweetId)}">
+          <div class="tweet-item-header">
+            <span class="tweet-user">${escapeHtml(getUsernameLabel(tweet))}</span>
+            <span class="tweet-time">${escapeHtml(formatDate(tweet.seenAt))}</span>
+          </div>
+          <p class="tweet-preview">${preview}</p>
+          <a href="${escapeHtml(tweet.url)}" target="_blank" rel="noopener noreferrer" class="tweet-url">${escapeHtml(tweet.url)}</a>
+          <div class="tweet-actions">
+            <button class="open-btn" data-action="open" type="button">開く</button>
+            <button class="delete-btn" data-action="delete" type="button">削除</button>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    tweetListEl.innerHTML = html;
+  }
+
+  function applyFilter(query) {
+    currentQuery = query.trim();
+    const normalizedQuery = currentQuery.toLowerCase();
+
+    clearSearchBtn.style.display = currentQuery ? 'block' : 'none';
+
+    if (!normalizedQuery) {
+      filteredTweets = [...allTweets];
+      renderTweetList(filteredTweets);
+      return;
+    }
+
+    filteredTweets = allTweets.filter((tweet) => {
+      return [tweet.url, tweet.username || '', tweet.preview || '']
+        .some((value) => value.toLowerCase().includes(normalizedQuery));
+    });
+
+    renderTweetList(filteredTweets);
+  }
+
+  async function refreshTweets() {
+    try {
+      const [tweets, settings] = await Promise.all([
+        window.TweetSaverStorage.getAllTweets(),
+        window.TweetSaverStorage.getSettings()
+      ]);
+
+      allTweets = [...tweets].sort((a, b) => b.seenAt - a.seenAt);
+      maxItemsInput.value = settings.maxItems;
+      applyFilter(searchInput.value || '');
+    } catch (error) {
+      tweetCountEl.textContent = '0件';
+      listStatusEl.textContent = '読込失敗';
+      tweetListEl.innerHTML = '<div class="empty-message">読み込み中にエラーが発生しました</div>';
+    }
+  }
+
+  async function deleteTweet(tweetId) {
+    try {
+      const deleted = await window.TweetSaverStorage.deleteTweet(tweetId);
+      if (deleted) {
+        await refreshTweets();
+      }
+    } catch (error) {
+      window.alert('削除中にエラーが発生しました');
+    }
+  }
+
+  async function openTweet(tweetId) {
+    try {
+      const tweet = await window.TweetSaverStorage.getTweetByTweetId(tweetId);
+      if (tweet?.url) {
+        chrome.tabs.create({ url: tweet.url });
+      }
+    } catch (error) {
+      window.alert('ポストを開けませんでした');
+    }
+  }
+
+  async function saveSettings() {
+    const maxItems = parseInt(maxItemsInput.value, 10);
+    if (Number.isNaN(maxItems) || maxItems < 20 || maxItems > 2000) {
+      window.alert('最大保存件数は 20 から 2000 の間で指定してください');
+      const settings = await window.TweetSaverStorage.getSettings();
+      maxItemsInput.value = settings.maxItems;
+      return;
+    }
+
+    try {
+      await window.TweetSaverStorage.updateSettings({ maxItems });
+      saveMessageEl.textContent = '保存しました';
+      setTimeout(() => {
+        saveMessageEl.textContent = '';
+      }, 2200);
+      await refreshTweets();
+    } catch (error) {
+      window.alert('保存中にエラーが発生しました');
+    }
+  }
+
+  async function deleteAllTweets() {
+    if (!window.confirm('すべての保存済みポストを削除します。よろしいですか？')) {
+      return;
+    }
+
+    try {
+      const deleted = await window.TweetSaverStorage.deleteAllTweets();
+      if (deleted) {
+        await refreshTweets();
+      }
+    } catch (error) {
+      window.alert('全削除中にエラーが発生しました');
+    }
+  }
+
+  function openOptionsPage() {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+      return;
+    }
+    chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html') });
+  }
+
+  tweetListEl.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+
+    const tweetItem = button.closest('.tweet-item');
+    if (!tweetItem) return;
+
+    const tweetId = tweetItem.dataset.tweetId;
+    if (!tweetId) return;
+
+    if (button.dataset.action === 'open') {
+      openTweet(tweetId);
+    }
+
+    if (button.dataset.action === 'delete') {
+      deleteTweet(tweetId);
     }
   });
+
+  saveSettingsBtn.addEventListener('click', saveSettings);
+  deleteAllBtn.addEventListener('click', deleteAllTweets);
+  searchInput.addEventListener('input', (event) => applyFilter(event.target.value));
+  clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    applyFilter('');
+  });
+  openOptionsBtn.addEventListener('click', openOptionsPage);
+
+  window.TweetSaverStorage.addStorageChangeListener(refreshTweets);
+
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.action === 'refreshPopup') {
+      refreshTweets();
+    }
+  });
+
+  await refreshTweets();
 });
