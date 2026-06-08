@@ -6,12 +6,12 @@
   const savedTweetIds = new Set();
   const observedElements = new WeakSet();
 
-  // 一瞬だけ表示されるツイートも拾いやすくするための閾値
-  const INTERSECTION_THRESHOLD = 0.01;
-  const MIN_VISIBLE_DURATION = 60;
-  const CHECK_INTERVAL_MS = 80;
-  const SAVE_DEBOUNCE_MS = 50;
-  const VIEWPORT_SCAN_INTERVAL_MS = 400;
+  // ほぼ即保存寄りにして、一瞬だけ現れるツイートも拾いやすくする
+  const INTERSECTION_THRESHOLD = 0;
+  const MIN_VISIBLE_DURATION = 0;
+  const CHECK_INTERVAL_MS = 40;
+  const SAVE_DEBOUNCE_MS = 10;
+  const VIEWPORT_SCAN_INTERVAL_MS = 200;
 
   const visibleState = new Map();
   const pendingTweetMap = new Map();
@@ -185,6 +185,13 @@
             processed: false
           });
         }
+
+        captureElementIfRelevant(element, 'intersection-enter');
+
+        const currentState = visibleState.get(element);
+        if (currentState) {
+          currentState.processed = true;
+        }
       } else if (existingState) {
         if (!existingState.processed) {
           captureElementIfRelevant(element, 'exit-before-threshold');
@@ -292,7 +299,7 @@
     if (typeof IntersectionObserver !== 'undefined') {
       intersectionObserver = new IntersectionObserver(intersectionCallback, {
         root: null,
-        rootMargin: '160px 0px',
+        rootMargin: '240px 0px',
         threshold: INTERSECTION_THRESHOLD
       });
     }
