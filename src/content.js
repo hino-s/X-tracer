@@ -6,7 +6,7 @@
   const savedTweetIds = new Set();
   const observedElements = new WeakSet();
 
-  // ほぼ即保存寄りにして、一瞬だけ現れるツイートも拾いやすくする
+  // 一瞬だけ見えたツイートは拾いやすくしつつ、未表示の下ツイートは拾いにくくする
   const INTERSECTION_THRESHOLD = 0;
   const MIN_VISIBLE_DURATION = 0;
   const CHECK_INTERVAL_MS = 40;
@@ -131,21 +131,56 @@
     }
   }
 
-  function isInViewport(element) {
+  function getViewportMetrics(element) {
     if (!element || !element.isConnected) {
-      return false;
+      return null;
     }
 
     const rect = element.getBoundingClientRect();
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const visibleTop = Math.max(rect.top, 0);
+    const visibleBottom = Math.min(rect.bottom, viewportHeight);
+    const visibleLeft = Math.max(rect.left, 0);
+    const visibleRight = Math.min(rect.right, viewportWidth);
+    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+    const visibleWidth = Math.max(0, visibleRight - visibleLeft);
 
-    return (
-      rect.bottom >= 0 &&
-      rect.right >= 0 &&
-      rect.top <= viewportHeight &&
-      rect.left <= viewportWidth
-    );
+    return {
+      rect,
+      viewportHeight,
+      viewportWidth,
+      visibleHeight,
+      visibleWidth,
+      isInViewport: rect.bottom >= 0 && rect.right >= 0 && rect.top <= viewportHeight && rect.left <= viewportWidth,
+      isActuallyVisible: visibleHeight > 0 && visibleWidth > 0
+    };
+  }
+
+  function isInViewport(element) {
+    const metrics = getViewportMetrics(element);
+    return Boolean(metrics && metrics.isInViewport);
+  }
+
+  function isActuallyVisible(element) {
+    const metrics = getViewportMetrics(element);
+    return Boolean(metrics && metrics.isActuallyVisible);
+  }
+
+  function markElementAsSeen(element) {
+    const currentState = visibleState.get(element);
+    if (currentState) {
+      currentState.wasActuallyVisible = true;
+      return currentState;
+    }
+
+    const newState = {
+      entranceTime: Date.now(),
+      processed: false,
+      wasActuallyVisible: true
+    };
+    visibleState.set(element, newState);
+    return newState;
   }
 
   function captureElementIfRelevant(element, reason = 'visible') {
@@ -162,13 +197,19 @@
     }
 
     if (isTweetElement(element)) {
-      captureElementIfRelevant(element, 'removed');
+      const state = visibleState.get(element);
+      if ((state && state.wasActuallyVisible) || isActuallyVisible(element)) {
+        captureElementIfRelevant(element, 'removed');
+      }
       visibleState.delete(element);
     }
 
     const tweetNodes = element.querySelectorAll ? element.querySelectorAll('article, div[role="article"]') : [];
     for (const tweetNode of tweetNodes) {
-      captureElementIfRelevant(tweetNode, 'removed-descendant');
+      const state = visibleState.get(tweetNode);
+      if ((state && state.wasActuallyVisible) || isActuallyVisible(tweetNode)) {
+        captureElementIfRelevant(tweetNode, 'removed-descendant');
+      }
       visibleState.delete(tweetNode);
     }
   }
@@ -182,19 +223,19 @@
         if (!existingState) {
           visibleState.set(element, {
             entranceTime: Date.now(),
-            processed: false
+            processed: false,
+            wasActuallyVisible: false
           });
         }
 
-        captureElementIfRelevant(element, 'intersection-enter');
-
-        const currentState = visibleState.get(element);
-        if (currentState) {
+        if (isActuallyVisible(element)) {
+          const currentState = markElementAsSeen(element);
+          captureElementIfRelevant(element, 'intersection-enter-visible');
           currentState.processed = true;
         }
       } else if (existingState) {
-        if (!existingState.processed) {
-          captureElementIfRelevant(element, 'exit-before-threshold');
+        if (existingState.wasActuallyVisible && !existingState.processed) {
+          captureElementIfRelevant(element, 'exit-after-visibility');
         }
         visibleState.delete(element);
       }
@@ -208,12 +249,18 @@
       if (state.processed) continue;
 
       if (!element.isConnected) {
-        captureElementIfRelevant(element, 'disconnected');
+        if (state.wasActuallyVisible) {
+          captureElementIfRelevant(element, 'disconnected-after-visibility');
+        }
         visibleState.delete(element);
         continue;
       }
 
-      if (now - state.entranceTime >= MIN_VISIBLE_DURATION) {
+      if (isActuallyVisible(element) && !state.wasActuallyVisible) {
+        markElementAsSeen(element);
+      }
+
+      if (state.wasActuallyVisible && now - state.entranceTime >= MIN_VISIBLE_DURATION) {
         state.processed = true;
         captureElementIfRelevant(element, 'visible-threshold');
       }
@@ -238,11 +285,16 @@
       if (!currentState) {
         visibleState.set(element, {
           entranceTime: Date.now(),
-          processed: false
+          processed: false,
+          wasActuallyVisible: false
         });
       }
 
-      captureElementIfRelevant(element, 'observed-in-viewport');
+      if (isActuallyVisible(element)) {
+        const seenState = markElementAsSeen(element);
+        captureElementIfRelevant(element, 'observed-in-viewport');
+        seenState.processed = true;
+      }
     }
   }
 
@@ -280,9 +332,12 @@
   function scanVisibleTweets() {
     const tweetElements = document.querySelectorAll('article, div[role="article"]');
     for (const element of tweetElements) {
-      if (isInViewport(element)) {
-        captureElementIfRelevant(element, 'viewport-scan');
+      if (!isActuallyVisible(element)) {
+        continue;
       }
+
+      markElementAsSeen(element);
+      captureElementIfRelevant(element, 'viewport-scan');
     }
   }
 
@@ -299,7 +354,7 @@
     if (typeof IntersectionObserver !== 'undefined') {
       intersectionObserver = new IntersectionObserver(intersectionCallback, {
         root: null,
-        rootMargin: '240px 0px',
+        rootMargin: '96px 0px',
         threshold: INTERSECTION_THRESHOLD
       });
     }
